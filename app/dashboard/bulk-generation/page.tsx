@@ -59,7 +59,10 @@ export default function BulkGenerationPage() {
         idx === i ? { ...f, status: 'processing', progress: 0 } : f
       ));
       await new Promise(r => setTimeout(r, 1200));
-      updateCredits(creditCost);
+      
+      // FIX: Added the minus sign here to properly DEDUCT credits
+      updateCredits(-creditCost); 
+      
       setBatchFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, status: 'done', progress: 100 } : f
       ));
