@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/auth-context';
-import { User, Upload, Download, Sparkles, AlertCircle, Zap } from 'lucide-react';
+// Removed unused 'Upload' import to prevent Vercel linting errors
+import { User, Download, Sparkles, AlertCircle, Zap } from 'lucide-react';
 
 const AVATAR_STYLES = [
   { id: 'professional', label: 'Professional', emoji: '💼' },
@@ -55,7 +56,8 @@ export default function AvatarGenerationPage() {
 
     try {
       await new Promise(r => setTimeout(r, 3500));
-      updateCredits(CREDIT_COST);
+      // FIX: Added the minus sign to actually DEDUCT the credits
+      updateCredits(-CREDIT_COST); 
       setResults(Array.from({ length: count }, (_, i) => `demo_${i}`));
     } catch {
       setError('Generation failed. Please try again.');
