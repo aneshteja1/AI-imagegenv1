@@ -1,7 +1,7 @@
 // ============================================================
 // VENKATTECH FACE SWAP SAAS — SHARED TYPES
 // ============================================================
-
+import type { Language } from '@/i18n';
 export type UserRole = 'super_admin' | 'admin' | 'company_admin' | 'user' | 'test_user' | 'test_admin';
 
 export interface User {
@@ -18,7 +18,7 @@ export interface User {
   createdAt: string;
   lastLogin?: string;
   status: 'active' | 'inactive' | 'suspended';
-  language: 'en' | 'ge';
+  language: Language;
 }
 
 export interface Company {
