@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/auth-context';
-import { Image as ImageIcon, Coins, Download, Upload, X, RefreshCcw } from 'lucide-react';
+// FIX: Removed unused imports (Upload, X, RefreshCcw) to prevent Vercel build failure
+import { Image as ImageIcon, Coins, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { CREDIT_COSTS } from '@/lib/types';
 
@@ -17,7 +18,8 @@ export default function ImageGenerationPage() {
   const [count, setCount] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [results, setResults] = useState<string[]>([]);
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  // FIX: Removed setReferenceImage since it is never used in this file
+  const [referenceImage] = useState<string | null>(null); 
 
   const cost = CREDIT_COSTS.image_generation * count;
 
@@ -147,6 +149,7 @@ export default function ImageGenerationPage() {
               <div className="image-grid">
                 {results.map((src, i) => (
                   <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', aspectRatio: '1', background: 'var(--secondary)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={src} alt={`Generated ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     <a
                       href={src} download={`generated-${i + 1}.jpg`}
