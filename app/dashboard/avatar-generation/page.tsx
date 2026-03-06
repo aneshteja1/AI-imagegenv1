@@ -27,7 +27,7 @@ const AVATAR_BACKGROUNDS = [
 const COUNTS = [1, 2, 4];
 
 export default function AvatarGenerationPage() {
-  const { user, deductCredits } = useAuth();
+  const { user, updateCredits } = useAuth();
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [style, setStyle] = useState('professional');
   const [background, setBackground] = useState('studio');
@@ -55,7 +55,7 @@ export default function AvatarGenerationPage() {
 
     try {
       await new Promise(r => setTimeout(r, 3500));
-      deductCredits(CREDIT_COST);
+      updateCredits(CREDIT_COST);
       setResults(Array.from({ length: count }, (_, i) => `demo_${i}`));
     } catch {
       setError('Generation failed. Please try again.');
