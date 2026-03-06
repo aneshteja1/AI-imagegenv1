@@ -13,7 +13,7 @@ interface BulkJob {
 }
 
 export default function BulkGenerationPage() {
-  const { user, deductCredits } = useAuth();
+  const { user, updateCredits } = useAuth();
   const [modelImage, setModelImage] = useState<string | null>(null);
   const [batchFiles, setBatchFiles] = useState<BulkJob[]>([]);
   const [operation, setOperation] = useState<'face_swap' | 'avatar'>('face_swap');
@@ -59,7 +59,7 @@ export default function BulkGenerationPage() {
         idx === i ? { ...f, status: 'processing', progress: 0 } : f
       ));
       await new Promise(r => setTimeout(r, 1200));
-      deductCredits(creditCost);
+      updateCredits(creditCost);
       setBatchFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, status: 'done', progress: 100 } : f
       ));

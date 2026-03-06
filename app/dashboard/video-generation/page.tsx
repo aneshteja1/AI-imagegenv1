@@ -25,7 +25,7 @@ const VIDEO_RESOLUTIONS = [
 ];
 
 export default function VideoGenerationPage() {
-  const { user, deductCredits } = useAuth();
+  const { user, updateCredits } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('cinematic');
   const [duration, setDuration] = useState('5');
@@ -68,7 +68,7 @@ export default function VideoGenerationPage() {
       await new Promise(r => setTimeout(r, 6000));
       clearInterval(interval);
       setProgress(100);
-      deductCredits(totalCredits);
+      updateCredits(totalCredits);
       // Demo result
       setResult('demo');
     } catch {
