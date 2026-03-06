@@ -1,6 +1,13 @@
+Two bugs in this file. Here's the fixed version — copy and replace yours entirely:
+
+**Bug 1:** `Math.random()` at module level causes a React hydration mismatch (server and client generate different numbers, breaking the chart on first load).
+
+**Bug 2:** `isAdmin` is destructured but never used — can cause a TypeScript lint error in strict mode.
+
+```tsx
 'use client';
 
-import { useAuth } from '@/app/context/auth-context';
+import { useMemo } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const WEEKLY = [
@@ -13,21 +20,26 @@ const WEEKLY = [
   { day: 'Sun', swaps: 22, images: 9,  videos: 2 },
 ];
 
-const MONTHLY = Array.from({ length: 30 }, (_, i) => ({
-  day: `${i + 1}`,
-  credits: Math.floor(Math.random() * 200) + 50,
-}));
+// Static seed data — no Math.random() at module level (causes hydration mismatch)
+const MONTHLY_SEED = [
+  112,180,95,210,143,88,175,220,67,195,
+  134,158,201,79,163,240,110,185,92,207,
+  148,173,99,216,131,189,105,228,142,177,
+];
 
 const PIE_DATA = [
-  { name: 'Face Swap',   value: 48, color: '#171717' },
-  { name: 'Images',      value: 24, color: '#404040' },
-  { name: 'Videos',      value: 14, color: '#737373' },
-  { name: 'Avatar',      value: 9,  color: '#a3a3a3' },
-  { name: 'Bulk',        value: 5,  color: '#d4d4d4' },
+  { name: 'Face Swap', value: 48, color: '#171717' },
+  { name: 'Images',    value: 24, color: '#404040' },
+  { name: 'Videos',    value: 14, color: '#737373' },
+  { name: 'Avatar',    value: 9,  color: '#a3a3a3' },
+  { name: 'Bulk',      value: 5,  color: '#d4d4d4' },
 ];
 
 export default function AnalyticsPage() {
-  const { user, isAdmin } = useAuth();
+  const monthly = useMemo(
+    () => MONTHLY_SEED.map((credits, i) => ({ day: `${i + 1}`, credits })),
+    []
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -60,9 +72,9 @@ export default function AnalyticsPage() {
               contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
               labelStyle={{ fontWeight: 600 }}
             />
-            <Bar dataKey="swaps"  name="Face Swaps"  fill="#171717" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="images" name="Images"      fill="#737373" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="videos" name="Videos"      fill="#d4d4d4" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="swaps"  name="Face Swaps" fill="#171717" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="images" name="Images"     fill="#737373" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="videos" name="Videos"     fill="#d4d4d4" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -72,7 +84,7 @@ export default function AnalyticsPage() {
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem' }}>
           <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: '1rem' }}>Credits Used (30 days)</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={MONTHLY} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <LineChart data={monthly} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} interval={4} />
               <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
@@ -106,3 +118,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+```
