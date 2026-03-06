@@ -16,7 +16,6 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  // DPI hint for high-resolution screens
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
@@ -28,6 +27,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="light dark" />
+
+        {/* Prevent dark/light theme flash before React hydrates */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('vt_theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light');if(d)document.documentElement.classList.add('dark');}catch(e){}})();` }} />
+
+        {/* Font preloads — eliminates flash of unstyled text */}
+        <link rel="preload" href="/fonts/Satoshi-Regular.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Satoshi-Medium.otf"  as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Satoshi-Bold.otf"    as="font" type="font/otf" crossOrigin="anonymous" />
       </head>
       <body>
         <AuthProvider>
