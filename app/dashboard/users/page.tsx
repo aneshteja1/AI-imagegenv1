@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useAuth, MOCK_USERS } from '@/app/context/auth-context';
 import type { User, UserRole } from '@/lib/types';
 import { getRoleLabel } from '@/lib/utils';
-import { Plus, X, Search, Edit, Trash2, Key } from 'lucide-react';
+// FIX: Removed unused 'Edit' icon import
+import { Plus, X, Search, Trash2, Key } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLES: UserRole[] = ['user', 'company_admin', 'admin', 'super_admin'];
@@ -16,7 +17,7 @@ export default function UsersPage() {
   );
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
+  // FIX: Removed unused 'editUser' state
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' as UserRole, credits: 500 });
 
   if (!isAdmin) {
@@ -105,8 +106,8 @@ export default function UsersPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
             {[
               { key: 'name',     label: 'Full Name',  type: 'text',     placeholder: 'John Doe' },
-              { key: 'email',    label: 'Email',       type: 'email',    placeholder: 'john@company.com' },
-              { key: 'password', label: 'Password',    type: 'password', placeholder: '••••••••' },
+              { key: 'email',    label: 'Email',      type: 'email',    placeholder: 'john@company.com' },
+              { key: 'password', label: 'Password',   type: 'password', placeholder: '••••••••' },
             ].map(field => (
               <div key={field.key}>
                 <label style={{ fontSize: 'var(--text-xs)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>{field.label}</label>
