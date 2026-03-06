@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/auth-context';
-import { useRouter } from 'next/navigation';
-import { Building2, Check, X, Eye, Upload, Plus, Coins, Users, FileText } from 'lucide-react';
+// FIX: Removed unused 'useRouter' import
+// FIX: Removed unused 'Building2', 'Check', 'Upload', 'Coins', 'Users' imports to prevent linting errors
+import { X, Eye, Plus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Company, CompanyFile } from '@/lib/types';
+import type { Company } from '@/lib/types'; // FIX: Removed unused 'CompanyFile' import
 
 const MOCK_COMPANIES: Company[] = [
   {
@@ -55,7 +56,7 @@ const STATUS_COLORS = {
 
 export default function CompaniesPage() {
   const { user, isAdmin } = useAuth();
-  const router = useRouter();
+  // FIX: Removed unused 'const router = useRouter();'
   const [companies, setCompanies] = useState<Company[]>(MOCK_COMPANIES);
   const [selected, setSelected] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved'>('all');
