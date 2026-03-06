@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/app/context/auth-context';
-import { AlertCircle, RefreshCw, Trash2, Clock, Filter } from 'lucide-react';
+// FIX: Removed unused 'user' destructuring
+// FIX: Removed unused 'Filter' icon import
+import { AlertCircle, RefreshCw, Trash2, Clock } from 'lucide-react';
 
 interface FailedJob {
   id: string;
@@ -31,7 +32,6 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function FailedJobsPage() {
-  const { user } = useAuth();
   const [jobs, setJobs] = useState<FailedJob[]>(MOCK_FAILED);
   const [filter, setFilter] = useState<string>('all');
   const [selected, setSelected] = useState<string[]>([]);
