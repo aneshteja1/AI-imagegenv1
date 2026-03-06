@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/app/context/auth-context';
-import { useRouter } from 'next/navigation';
+// FIX: Removed unused 'useRouter' import
 import { creditStatus, formatNumber } from '@/lib/utils';
 import { BarChart2, RefreshCcw, Image, Video, Users, Building2, TrendingUp, Coins, AlertCircle, Layers } from 'lucide-react';
 import Link from 'next/link';
@@ -29,7 +29,7 @@ const MOCK_RECENT = [
 
 export default function DashboardPage() {
   const { user, isAdmin, isSuperAdmin } = useAuth();
-  const router = useRouter();
+  // FIX: Removed unused 'const router = useRouter();'
 
   if (!user) return null;
 
@@ -177,46 +177,47 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Admin: Pending Approvals */}
-      {isAdmin && MOCK_STATS.pendingApprovals > 0 && (
-        <div style={{
-          background: 'rgba(234,179,8,0.1)',
-          border: '1px solid rgba(234,179,8,0.3)',
-          borderRadius: '12px',
-          padding: '1rem 1.25rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexWrap: 'wrap', gap: '0.75rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: '#92400e' }}>
-                {MOCK_STATS.pendingApprovals} company files awaiting approval
-              </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: '#a16207' }}>
-                Review and approve company documents to give them access
+        {/* Admin: Pending Approvals */}
+        {isAdmin && MOCK_STATS.pendingApprovals > 0 && (
+          <div style={{
+            background: 'rgba(234,179,8,0.1)',
+            border: '1px solid rgba(234,179,8,0.3)',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: '0.75rem',
+            gridColumn: '1 / -1', // Ensure it spans full width if needed
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: '#92400e' }}>
+                  {MOCK_STATS.pendingApprovals} company files awaiting approval
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: '#a16207' }}>
+                  Review and approve company documents to give them access
+                </div>
               </div>
             </div>
+            <Link
+              href="/dashboard/companies"
+              style={{
+                padding: '0.375rem 0.875rem',
+                background: '#d97706',
+                color: 'white',
+                borderRadius: '6px',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                textDecoration: 'none',
+                flexShrink: 0,
+              }}
+            >
+              Review Now
+            </Link>
           </div>
-          <Link
-            href="/dashboard/companies"
-            style={{
-              padding: '0.375rem 0.875rem',
-              background: '#d97706',
-              color: 'white',
-              borderRadius: '6px',
-              fontSize: 'var(--text-xs)',
-              fontWeight: 600,
-              textDecoration: 'none',
-              flexShrink: 0,
-            }}
-          >
-            Review Now
-          </Link>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
