@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/auth-context';
-import { Check, Coins, CreditCard, Zap } from 'lucide-react';
+import { Check, Coins, CreditCard, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Plan, SubscriptionPlan } from '@/lib/types';
 
@@ -52,6 +52,7 @@ export default function BillingPage() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   async function handleSubscribe(planId: SubscriptionPlan) {
+    if (isProcessing) return; // Prevent double clicks
     setIsProcessing(planId);
     await new Promise(r => setTimeout(r, 1200)); // simulate
     toast.success(`Subscribed to ${planId} plan! (Stripe integration required for live payments)`);
@@ -59,13 +60,20 @@ export default function BillingPage() {
   }
 
   async function handleCreditPurchase(credits: number, price: number) {
+    if (isProcessing) return; // Prevent double clicks
     setIsProcessing(`credits-${credits}`);
     await new Promise(r => setTimeout(r, 1000));
     toast.success(`Purchased ${credits} credits! (Stripe integration required for live payments)`);
     setIsProcessing(null);
   }
 
-  const currentPlan = user?.companyId ? 'professional' : 'free';
+  // FIX: Dynamically read from the user object if available, fallback to your previous logic
+  // Update this to match your actual database schema (e.g., user?.planId or user?.subscriptionTier)
+  const currentPlan = user?.planId || (user?.companyId ? 'professional' : 'free');
+
+  // FIX: Safe math to prevent NaN/Infinity if creditLimit is 0 or undefined
+  const safeCreditLimit = user?.creditLimit || 1;
+  const creditsPercentage = Math.min(Math.round(((user?.credits || 0) / safeCreditLimit) * 100), 100);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -77,12 +85,20 @@ export default function BillingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
             <div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted-foreground)', marginBottom: '0.25rem' }}>Credits Balance</div>
-              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{user.credits.toLocaleString()}</div>
-              <div className="credit-bar" style={{ marginTop: '0.5rem' }}>
-                <div className="credit-bar-fill high" style={{ width: `${Math.round((user.credits / user.creditLimit) * 100)}%` }} />
+              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{user.credits?.toLocaleString() || 0}</div>
+              <div className="credit-bar" style={{ marginTop: '0.5rem', background: 'var(--border)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                <div 
+                  className="credit-bar-fill high" 
+                  style={{ 
+                    width: `${creditsPercentage}%`,
+                    height: '100%',
+                    background: creditsPercentage > 80 ? 'var(--foreground)' : 'var(--primary)',
+                    transition: 'width 0.5s ease-in-out'
+                  }} 
+                />
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>
-                of {user.creditLimit.toLocaleString()} total
+                of {safeCreditLimit.toLocaleString()} total
               </div>
             </div>
             <div>
@@ -115,6 +131,8 @@ export default function BillingPage() {
           {PLANS.map(plan => {
             const price = billing === 'yearly' ? plan.priceYearly / 12 : plan.price;
             const isCurrent = plan.id === currentPlan;
+            const isThisProcessing = isProcessing === plan.id;
+            
             return (
               <div key={plan.id} style={{
                 background: isCurrent ? 'var(--foreground)' : 'var(--card)',
@@ -151,8 +169,8 @@ export default function BillingPage() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={isCurrent || isProcessing === plan.id}
+                  onClick={() => handleSubscribe(plan.id as SubscriptionPlan)}
+                  disabled={isCurrent || isProcessing !== null}
                   style={{
                     padding: '0.625rem',
                     background: isCurrent ? 'rgba(255,255,255,0.2)' : 'var(--foreground)',
@@ -161,11 +179,17 @@ export default function BillingPage() {
                     borderRadius: '8px',
                     fontWeight: 600,
                     fontSize: 'var(--text-sm)',
-                    cursor: isCurrent ? 'default' : 'pointer',
-                    opacity: isProcessing === plan.id ? 0.7 : 1,
+                    cursor: (isCurrent || isProcessing) ? 'not-allowed' : 'pointer',
+                    opacity: (isProcessing && !isThisProcessing) ? 0.5 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
                   }}
                 >
-                  {isProcessing === plan.id ? 'Processing...' : isCurrent ? 'Current Plan' : `Upgrade to ${plan.name}`}
+                  {isThisProcessing ? (
+                    <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                  ) : isCurrent ? 'Current Plan' : `Upgrade to ${plan.name}`}
                 </button>
               </div>
             );
@@ -177,37 +201,47 @@ export default function BillingPage() {
       <div>
         <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, marginBottom: '1rem' }}>Buy Credit Packs</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(180px, 22%, 240px), 1fr))', gap: '0.75rem' }}>
-          {CREDIT_PACKS.map(pack => (
-            <div key={pack.credits} style={{
-              background: 'var(--card)', border: '1px solid var(--border)',
-              borderRadius: '12px', padding: '1.25rem',
-              display: 'flex', flexDirection: 'column', gap: '0.5rem',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Coins size={16} style={{ color: 'var(--muted-foreground)' }} />
-                <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>{pack.credits.toLocaleString()}</span>
+          {CREDIT_PACKS.map(pack => {
+            const isThisProcessing = isProcessing === `credits-${pack.credits}`;
+            
+            return (
+              <div key={pack.credits} style={{
+                background: 'var(--card)', border: '1px solid var(--border)',
+                borderRadius: '12px', padding: '1.25rem',
+                display: 'flex', flexDirection: 'column', gap: '0.5rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Coins size={16} style={{ color: 'var(--muted-foreground)' }} />
+                  <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>{pack.credits.toLocaleString()}</span>
+                </div>
+                <div style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-xs)' }}>
+                  {pack.perCredit} per credit
+                </div>
+                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>${pack.price}</div>
+                <button
+                  onClick={() => handleCreditPurchase(pack.credits, pack.price)}
+                  disabled={isProcessing !== null}
+                  style={{
+                    marginTop: '0.25rem',
+                    padding: '0.5rem',
+                    background: 'var(--foreground)', color: 'var(--background)',
+                    border: 'none', borderRadius: '6px',
+                    fontWeight: 600, fontSize: 'var(--text-sm)', 
+                    cursor: isProcessing !== null ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    opacity: (isProcessing && !isThisProcessing) ? 0.5 : 1,
+                  }}
+                >
+                  {isThisProcessing ? (
+                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <CreditCard size={14} />
+                  )}
+                  {isThisProcessing ? 'Processing...' : 'Buy Now'}
+                </button>
               </div>
-              <div style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-xs)' }}>
-                {pack.perCredit} per credit
-              </div>
-              <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>${pack.price}</div>
-              <button
-                onClick={() => handleCreditPurchase(pack.credits, pack.price)}
-                disabled={isProcessing === `credits-${pack.credits}`}
-                style={{
-                  marginTop: '0.25rem',
-                  padding: '0.5rem',
-                  background: 'var(--foreground)', color: 'var(--background)',
-                  border: 'none', borderRadius: '6px',
-                  fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                }}
-              >
-                <CreditCard size={14} />
-                {isProcessing === `credits-${pack.credits}` ? 'Processing...' : 'Buy Now'}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-xs)', color: 'var(--muted-foreground)' }}>
           💳 Payments processed via Stripe. Credits never expire. Stripe API keys required in .env.local for live payments.
