@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+// FIX: Removed unused 'useCallback' import
+import { useState, useRef } from 'react';
 import { useAuth } from '@/app/context/auth-context';
 import { toast } from 'sonner';
 import { Upload, RefreshCcw, Download, X, Coins } from 'lucide-react';
 import { CREDIT_COSTS } from '@/lib/types';
-import Image from 'next/image';
+// FIX: Removed unused 'Image' import from 'next/image'
 
 const AVATARS = [
   { id: 'ava',      name: 'Ava',      src: '/assets/avatars/Ava.png' },
@@ -113,12 +114,11 @@ export default function SwapModelPage() {
         throw new Error('Swap failed');
       }
     } catch (err) {
-      // Demo mode: show placeholder result
-      setResult(modelImage);
-      updateCredits(-cost);
-      toast.success(`Demo: Swap simulated! −${cost} credits`);
+      // FIX: Proper error handling (doesn't steal credits on failure)
+      toast.error('Generation failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   }
 
   return (
@@ -157,6 +157,7 @@ export default function SwapModelPage() {
 
           {modelImage ? (
             <div style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '8px', overflow: 'hidden', background: 'var(--secondary)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={modelImage} alt="Model" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           ) : (
@@ -200,6 +201,7 @@ export default function SwapModelPage() {
           {customAvatar ? (
             <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
               <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={customAvatar} alt="Custom avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <button
@@ -227,6 +229,7 @@ export default function SwapModelPage() {
                   aspectRatio: '1',
                 }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={avatar.src} alt={avatar.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   onError={e => { (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${avatar.name}&background=gray&color=fff`; }}
                 />
@@ -283,6 +286,7 @@ export default function SwapModelPage() {
             </a>
           </div>
           <div style={{ maxWidth: '400px', borderRadius: '8px', overflow: 'hidden' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={result} alt="Swap result" style={{ width: '100%', height: 'auto', display: 'block' }} />
           </div>
         </div>
