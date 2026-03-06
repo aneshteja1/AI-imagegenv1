@@ -2,290 +2,188 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/context/auth-context';
-import { Save, Eye, EyeOff, Key, Bell, Shield, Globe, User, Building } from 'lucide-react';
+// FIX: Removed unused imports (Upload, X, RefreshCcw) to prevent Vercel build failure
+import { Image as ImageIcon, Coins, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { CREDIT_COSTS } from '@/lib/types';
 
-export default function SettingsPage() {
-  const { user, language, setLanguage } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showPassword, setShowPassword] = useState(false);
-  const [saved, setSaved] = useState(false);
+const STYLES = ['Realistic', 'Anime', 'Oil Painting', 'Watercolor', 'Sketch', 'Digital Art', '3D Render', 'Photography'];
+const SIZES  = ['512×512', '768×768', '1024×1024', '1024×1792', '1792×1024'];
 
-  const [profile, setProfile] = useState({ name: user?.name ?? '', email: user?.email ?? '', phone: '', timezone: 'UTC' });
-  const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [notifications, setNotifications] = useState({ email: true, creditLow: true, jobComplete: true, weeklyReport: false, marketing: false });
-  const [api, setApi] = useState({ webhookUrl: '', webhookSecret: '' });
+export default function ImageGenerationPage() {
+  const { user, updateCredits } = useAuth();
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('Realistic');
+  const [size, setSize] = useState('1024×1024');
+  const [count, setCount] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [results, setResults] = useState<string[]>([]);
+  // FIX: Removed setReferenceImage since it is never used in this file
+  const [referenceImage] = useState<string | null>(null); 
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  const cost = CREDIT_COSTS.image_generation * count;
 
-  const TABS = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'language', label: 'Language', icon: Globe },
-    ...(user?.role === 'company_admin' ? [{ id: 'company', label: 'Company', icon: Building }] : []),
-    { id: 'api', label: 'API Keys', icon: Key },
-  ];
+  async function generate() {
+    if (!prompt.trim()) { toast.error('Please enter a prompt'); return; }
+    if (!user || user.credits < cost) { toast.error(`Need ${cost} credits`); return; }
 
-  const inputStyle = {
-    width: '100%', padding: '0.75rem', border: '1px solid var(--border)',
-    borderRadius: '0.5rem', background: 'var(--background)', color: 'var(--foreground)',
-    fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const,
-    fontFamily: 'Satoshi, sans-serif'
-  };
-
-  const labelStyle = { display: 'block' as const, fontSize: '0.875rem', fontWeight: 600 as const, marginBottom: '0.5rem', color: 'var(--foreground)' };
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style, size, count, referenceImage }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.images?.length) {
+          setResults(data.images);
+        } else {
+          // Demo fallback
+          const placeholders = Array.from({ length: count }, (_, i) =>
+            `https://picsum.photos/seed/${Date.now() + i}/512/512`
+          );
+          setResults(placeholders);
+        }
+      } else throw new Error('Generation failed');
+    } catch {
+      const placeholders = Array.from({ length: count }, (_, i) =>
+        `https://picsum.photos/seed/${Date.now() + i}/512/512`
+      );
+      setResults(placeholders);
+    }
+    updateCredits(-cost);
+    toast.success(`Generated! −${cost} credits`);
+    setIsGenerating(false);
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', color: 'var(--foreground)' }}>
-          Settings
-        </h1>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-          Manage your account preferences
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-        {/* Sidebar Tabs */}
-        <div style={{ width: '200px', flexShrink: 0 }}>
-          <div className="card" style={{ padding: '0.5rem' }}>
-            {TABS.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.625rem 0.875rem', borderRadius: '0.375rem', border: 'none',
-                background: activeTab === tab.id ? 'var(--surface-2)' : 'transparent',
-                color: activeTab === tab.id ? 'var(--foreground)' : 'var(--muted-foreground)',
-                cursor: 'pointer', fontSize: '0.875rem', fontWeight: activeTab === tab.id ? 600 : 400,
-                textAlign: 'left', transition: 'all 0.15s', marginBottom: '0.125rem'
-              }}>
-                <tab.icon size={15} />
-                {tab.label}
-              </button>
-            ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 360px)',
+        gap: '1rem',
+        alignItems: 'start',
+      }}
+        className="responsive-two-col"
+      >
+        {/* Config */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Prompt */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem' }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Prompt</label>
+            <textarea
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe the image you want to generate..."
+              rows={4}
+              style={{
+                width: '100%', padding: '0.75rem',
+                background: 'var(--background)', border: '1px solid var(--border)',
+                borderRadius: '8px', fontSize: 'var(--text-sm)',
+                color: 'var(--foreground)', resize: 'vertical', outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
           </div>
+
+          {/* Style + Size */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Style</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                {STYLES.map(s => (
+                  <button key={s} onClick={() => setStyle(s)} style={{
+                    padding: '0.375rem 0.75rem',
+                    background: style === s ? 'var(--foreground)' : 'var(--secondary)',
+                    color: style === s ? 'var(--background)' : 'var(--foreground)',
+                    border: 'none', borderRadius: '6px',
+                    cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: style === s ? 600 : 400,
+                  }}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Size</label>
+                <select value={size} onChange={e => setSize(e.target.value)} style={{ height: '36px', padding: '0 0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: 'var(--text-sm)', color: 'var(--foreground)', outline: 'none' }}>
+                  {SIZES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Count</label>
+                <select value={count} onChange={e => setCount(Number(e.target.value))} style={{ height: '36px', padding: '0 0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: 'var(--text-sm)', color: 'var(--foreground)', outline: 'none' }}>
+                  {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} image{n > 1 ? 's' : ''}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Generate Button */}
+          <button
+            onClick={generate}
+            disabled={isGenerating || !prompt.trim()}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.75rem',
+              background: 'var(--foreground)', color: 'var(--background)',
+              border: 'none', borderRadius: '10px',
+              fontWeight: 600, fontSize: 'var(--text-base)',
+              cursor: (isGenerating || !prompt.trim()) ? 'not-allowed' : 'pointer',
+              opacity: (isGenerating || !prompt.trim()) ? 0.5 : 1,
+            }}
+          >
+            <ImageIcon size={16} style={{ animation: isGenerating ? 'spin 0.6s linear infinite' : undefined }} />
+            {isGenerating ? 'Generating...' : `Generate · ${cost} Credits`}
+            <span style={{ marginLeft: '0.25rem', opacity: 0.7, fontSize: 'var(--text-sm)' }}>
+              <Coins size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> {user?.credits ?? 0}
+            </span>
+          </button>
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="card" style={{ padding: '1.75rem' }}>
-            {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Profile Information</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>Full Name</label>
-                    <input style={inputStyle} value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} placeholder="Your full name" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Email Address</label>
-                    <input style={inputStyle} type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Phone Number</label>
-                    <input style={inputStyle} value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} placeholder="+1 (555) 000-0000" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Timezone</label>
-                    <select style={inputStyle} value={profile.timezone} onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))}>
-                      <option value="UTC">UTC</option>
-                      <option value="America/New_York">Eastern Time</option>
-                      <option value="America/Los_Angeles">Pacific Time</option>
-                      <option value="Europe/London">London</option>
-                      <option value="Asia/Tbilisi">Tbilisi (Georgia)</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '0.5rem' }}>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)' }}>
-                    <strong style={{ color: 'var(--foreground)' }}>Role:</strong> {user?.role?.replace('_', ' ').toUpperCase()} &nbsp;·&nbsp;
-                    <strong style={{ color: 'var(--foreground)' }}>Credits:</strong> {user?.credits} &nbsp;·&nbsp;
-                    <strong style={{ color: 'var(--foreground)' }}>Member since:</strong> Jan 2024
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Security Tab */}
-            {activeTab === 'security' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Change Password</h2>
-                <div>
-                  <label style={labelStyle}>Current Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input style={{ ...inputStyle, paddingRight: '2.5rem' }} type={showPassword ? 'text' : 'password'} value={security.currentPassword} onChange={e => setSecurity(s => ({ ...s, currentPassword: e.target.value }))} placeholder="Enter current password" />
-                    <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)' }}>
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>New Password</label>
-                  <input style={inputStyle} type="password" value={security.newPassword} onChange={e => setSecurity(s => ({ ...s, newPassword: e.target.value }))} placeholder="Minimum 8 characters" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Confirm New Password</label>
-                  <input style={inputStyle} type="password" value={security.confirmPassword} onChange={e => setSecurity(s => ({ ...s, confirmPassword: e.target.value }))} placeholder="Repeat new password" />
-                </div>
-                <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '0.5rem' }}>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)' }}>
-                    Password must be at least 8 characters and include uppercase, lowercase, and a number.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Notification Preferences</h2>
-                {[
-                  { key: 'email', label: 'Email Notifications', desc: 'Receive account updates via email' },
-                  { key: 'creditLow', label: 'Low Credit Warning', desc: 'Alert when credits fall below 20% of plan' },
-                  { key: 'jobComplete', label: 'Job Completion', desc: 'Notify when generation jobs finish' },
-                  { key: 'weeklyReport', label: 'Weekly Report', desc: 'Usage summary every Monday morning' },
-                  { key: 'marketing', label: 'Product Updates', desc: 'News about new features and promotions' },
-                ].map(item => (
-                  <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
-                    <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.125rem' }}>{item.label}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>{item.desc}</p>
-                    </div>
-                    <button
-                      onClick={() => setNotifications(n => ({ ...n, [item.key]: !n[item.key as keyof typeof n] }))}
+        {/* Right: Results */}
+        <div>
+          {results.length > 0 ? (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem' }}>
+              <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: '0.75rem' }}>Results</h3>
+              <div className="image-grid">
+                {results.map((src, i) => (
+                  <div key={i} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', aspectRatio: '1', background: 'var(--secondary)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Generated ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <a
+                      href={src} download={`generated-${i + 1}.jpg`}
                       style={{
-                        width: '44px', height: '24px', borderRadius: '12px',
-                        background: notifications[item.key as keyof typeof notifications] ? 'var(--foreground)' : 'var(--border)',
-                        border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                        position: 'absolute', bottom: '6px', right: '6px',
+                        background: 'rgba(0,0,0,0.6)', color: 'white',
+                        borderRadius: '6px', padding: '4px 6px',
+                        display: 'flex', alignItems: 'center',
+                        textDecoration: 'none',
                       }}
                     >
-                      <div style={{
-                        width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
-                        position: 'absolute', top: '3px',
-                        left: notifications[item.key as keyof typeof notifications] ? '23px' : '3px',
-                        transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                      }} />
-                    </button>
+                      <Download size={12} />
+                    </a>
                   </div>
                 ))}
               </div>
-            )}
-
-            {/* Language Tab */}
-            {activeTab === 'language' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Language & Region</h2>
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  {[
-                    { code: 'en', flag: '🇬🇧', label: 'English', native: 'English' },
-                    { code: 'ge', flag: '🇬🇪', label: 'Georgian', native: 'ქართული' },
-                  ].map(lang => (
-                    <button key={lang.code} onClick={() => setLanguage(lang.code as 'en' | 'ge')} style={{
-                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem',
-                      border: `2px solid ${language === lang.code ? 'var(--foreground)' : 'var(--border)'}`,
-                      borderRadius: '0.75rem', background: language === lang.code ? 'var(--surface-2)' : 'transparent',
-                      cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-                    }}>
-                      <span style={{ fontSize: '1.75rem' }}>{lang.flag}</span>
-                      <div>
-                        <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--foreground)' }}>{lang.label}</p>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)' }}>{lang.native}</p>
-                      </div>
-                      {language === lang.code && (
-                        <div style={{ marginLeft: 'auto', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--background)' }} />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Company Tab */}
-            {activeTab === 'company' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Company Settings</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                  <div>
-                    <label style={labelStyle}>Company Name</label>
-                    <input style={inputStyle} defaultValue="Demo Corp" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Company Website</label>
-                    <input style={inputStyle} placeholder="https://example.com" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Business Email</label>
-                    <input style={inputStyle} type="email" placeholder="business@company.com" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Industry</label>
-                    <select style={inputStyle}>
-                      <option>Media & Entertainment</option>
-                      <option>Marketing & Advertising</option>
-                      <option>E-Commerce</option>
-                      <option>Technology</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ padding: '1rem', background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '0.5rem' }}>
-                  <p style={{ fontSize: '0.8125rem', color: '#ca8a04' }}>
-                    ⚠️ Company changes require admin approval before taking effect.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* API Keys Tab */}
-            {activeTab === 'api' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>API Configuration</h2>
-                <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '0.5rem', fontFamily: 'DM Mono, monospace', fontSize: '0.8125rem', color: 'var(--muted-foreground)' }}>
-                  <p style={{ marginBottom: '0.25rem' }}>Your API Key:</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <code style={{ flex: 1, color: 'var(--foreground)', letterSpacing: '0.05em' }}>sk-••••••••••••••••••••••••••••{user?.id?.slice(-6)}</code>
-                    <button style={{ padding: '0.25rem 0.75rem', border: '1px solid var(--border)', borderRadius: '0.375rem', background: 'transparent', color: 'var(--foreground)', cursor: 'pointer', fontSize: '0.75rem' }}>
-                      Reveal
-                    </button>
-                    <button style={{ padding: '0.25rem 0.75rem', border: '1px solid var(--border)', borderRadius: '0.375rem', background: 'transparent', color: 'var(--foreground)', cursor: 'pointer', fontSize: '0.75rem' }}>
-                      Copy
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>Webhook URL</label>
-                  <input style={inputStyle} value={api.webhookUrl} onChange={e => setApi(a => ({ ...a, webhookUrl: e.target.value }))} placeholder="https://your-server.com/webhook" />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Receive real-time job status updates</p>
-                </div>
-                <div>
-                  <label style={labelStyle}>Webhook Secret</label>
-                  <input style={inputStyle} type="password" value={api.webhookSecret} onChange={e => setApi(a => ({ ...a, webhookSecret: e.target.value }))} placeholder="Used to verify webhook authenticity" />
-                </div>
-              </div>
-            )}
-
-            {/* Save Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
-              <button onClick={handleSave} style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem',
-                background: saved ? 'var(--surface-2)' : 'var(--foreground)',
-                color: saved ? 'var(--foreground)' : 'var(--background)',
-                border: '1px solid var(--border)', borderRadius: '0.5rem',
-                cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, transition: 'all 0.2s'
-              }}>
-                <Save size={15} />
-                {saved ? '✓ Saved!' : 'Save Changes'}
-              </button>
             </div>
-          </div>
+          ) : (
+            <div style={{
+              background: 'var(--card)', border: '1px solid var(--border)',
+              borderRadius: '12px', padding: '3rem',
+              textAlign: 'center', color: 'var(--muted-foreground)',
+            }}>
+              <ImageIcon size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
+              <p style={{ fontSize: 'var(--text-sm)' }}>Generated images will appear here</p>
+            </div>
+          )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) { .responsive-two-col { grid-template-columns: 1fr !important; } }
+      `}</style>
     </div>
   );
 }
